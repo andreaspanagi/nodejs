@@ -61,20 +61,6 @@ app.use(flash());
 // Enable CSRF protection for all routes to prevent cross-site request forgery attacks
 app.use(csrfProtection);
 
-// Middleware to attach user object to request from session
-// Retrieves full user document from database if user is logged in
-app.use((req, res, next) => {
-  if (!req.session.user) {
-    return next();
-  }
-  User.findById(req.session.user._id)
-    .then(user => {
-      req.user = user;
-      next();
-    })
-    .catch(err => console.log(err));
-});
-
 // Middleware to make authentication status and CSRF token available to all views
 // These variables are used in EJS templates for conditional rendering and form security
 app.use((req, res, next) => {
@@ -83,14 +69,45 @@ app.use((req, res, next) => {
   next();
 });
 
+// Middleware to attach user object to request from session
+// Retrieves full user document from database if user is logged in
+app.use((req, res, next) => {
+  if (!req.session.user) {
+    return next();
+  }
+  User.findById(req.session.user._id)
+    .then(user => {
+      if (!user) {
+        return next();
+      }
+      req.user = user;
+      next();
+    })
+    .catch(err => {
+      next(new Error(err));
+    });
+});
+
+
 // Register application routes
 // Admin routes are prefixed with /admin, shop and auth routes use root paths
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
 
+// Catch-all 500 errors
+app.get('/500', errorController.get500);
+
 // Catch-all 404 error handler for undefined routes
 app.use(errorController.get404);
+
+app.use((error, req, res, next) => {
+    res.status(500).render('500', {
+    pageTitle: 'Error',
+    path: '/500',
+    isAuthenticated: req.session.isLoggedIn
+  });
+})
 
 // Connect to MongoDB and start the server
 // Server starts even if MongoDB connection fails (for development purposes)
