@@ -9,6 +9,7 @@ const session = require('express-session');
 const { MongoStore } = require('connect-mongo');
 const csrf = require('csurf');
 const flash = require('connect-flash');
+const multer = require('multer');
 
 const errorController = require('./controllers/error');
 const User = require('./models/user');
@@ -20,6 +21,26 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shop';
 // Initialize Express application and CSRF protection middleware
 const app = express();
 const csrfProtection = csrf();
+const fileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'images');
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString() + '-' + file.originalname);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === 'image/png' || 
+      file.mimetype === 'image/jpg' || 
+      file.mimetype === 'image/jpeg') 
+  {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
+  
+}
 
 // console.log('Using MongoDB session store');
 
@@ -35,9 +56,11 @@ const authRoutes = require('./routes/auth');
 // Parse incoming request bodies from forms
 app.use(bodyParser.urlencoded({ extended: false }));
 
+app.use(multer({ storage: fileStorage, fileFilter: fileFilter }).single('image'));
+
 // Serve static files from the public directory (CSS, JS, images)
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.use('/images', express.static(path.join(__dirname, 'images')));
 // Configure session middleware with MongoDB storage
 // Sessions persist across server restarts using MongoDB
 app.use(
