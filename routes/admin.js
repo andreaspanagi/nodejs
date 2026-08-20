@@ -70,8 +70,8 @@ router.post('/edit-product',
 
 // Route to handle product deletion
 // Removes the product from the database if owned by the authenticated user
-router.post('/delete-product', 
+router.delete('/product/:productId', 
     isAuth, 
-    adminController.postDeleteProduct);
+    adminController.deleteProduct);
 
 module.exports = router;
